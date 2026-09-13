@@ -43,7 +43,7 @@
   .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .card {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 18px; display: flex; flex-direction: column; gap: 10px;
+    padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 168px;
   }
   .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0; font-weight: 600; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -52,10 +52,14 @@
   .state.bad { color: var(--bad); }
   .state.unknown { color: var(--muted); }
   .lat { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
-  .detail { font-size: 13px; color: var(--text); background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; word-break: break-word; }
-  .uptime { font-size: 13px; color: var(--muted); }
+  .detail { font-size: 13px; color: var(--text); background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; }
+  .uptime { font-size: 13px; color: var(--muted); margin-top: auto; padding-top: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  col.waktu { width: 30%; }
+  col.layanan { width: 34%; }
+  col.hasil { width: 16%; }
+  col.respons { width: 20%; }
   th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
   td.num { font-variant-numeric: tabular-nums; }
   .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
@@ -64,7 +68,8 @@
   section { margin-top: 28px; }
   section > h2 { font-size: 14px; margin: 0 0 10px; }
   .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  footer { margin-top: 32px; color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 14px; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+  footer .kanan { margin-left: auto; }
   a { color: #1d4ed8; text-decoration: none; }
   a:hover { text-decoration: underline; }
   .err { color: var(--bad); font-size: 13px; }
@@ -75,7 +80,7 @@
   <header>
     <div>
       <h1>Monitor Server</h1>
-      <div class="sub">Minecraft &middot; API &middot; Website &mdash; diperiksa otomatis tiap 10 menit</div>
+      <div class="sub">Minecraft, API, dan website &mdash; diperiksa otomatis tiap 10 menit</div>
     </div>
     <div id="badge" class="badge"><span class="dot"></span><span id="badgeText">memuat</span></div>
   </header>
@@ -86,6 +91,9 @@
     <h2>Pemeriksaan terakhir</h2>
     <div class="panel">
       <table>
+        <colgroup>
+          <col class="waktu" /><col class="layanan" /><col class="hasil" /><col class="respons" />
+        </colgroup>
         <thead>
           <tr><th>Waktu</th><th>Layanan</th><th>Hasil</th><th>Respons</th></tr>
         </thead>
@@ -98,8 +106,8 @@
 
   <footer>
     <span id="diperiksa">-</span>
-    <span>Diperbarui otomatis tiap 60 detik</span>
-    <a href="https://fundraise.id" target="_blank" rel="noreferrer">fundraise.id</a>
+    <span>Halaman ini memperbarui data tiap 60 detik</span>
+    <a class="kanan" href="https://fundraise.id" target="_blank" rel="noreferrer">fundraise.id</a>
   </footer>
 </div>
 
@@ -119,6 +127,18 @@ const TARGET = {
   api: "Heroku",
 };
 
+const ringkasDetail = (target, teks) => {
+  const s = (teks || "").trim();
+  if (target === "minecraft") return s || "menunggu pemeriksaan";
+  const http = s.match(/HTTP\s+(\d{3})/i);
+  if (http) {
+    const kode = http[1];
+    if (kode === "200" && /pong/i.test(s)) return "HTTP 200 pong";
+    return "HTTP " + kode + (kode.startsWith("2") ? " OK" : "");
+  }
+  return s.slice(0, 90) || "menunggu pemeriksaan";
+};
+
 const fmt = (iso) => {
   const d = new Date(iso);
   if (isNaN(d)) return "-";
@@ -130,7 +150,7 @@ function kartu(nama, data, uptime) {
   const kelas = ok === true ? "ok" : ok === false ? "bad" : "unknown";
   const teks = ok === true ? "Normal" : ok === false ? "Bermasalah" : "Belum ada data";
   const lat = data && data.latency_ms != null ? data.latency_ms + " ms" : "-";
-  const detail = data && data.detail ? data.detail : "menunggu pemeriksaan";
+  const detail = ringkasDetail(nama, data ? data.detail : "");
   const up = uptime != null ? uptime + "% dalam 24 jam" : "data 24 jam belum cukup";
   return `
     <div class="card">
@@ -162,7 +182,15 @@ async function muat() {
       .map((t) => kartu(t, (d.ringkas || {})[t], (d.uptime_24_jam || {})[t]))
       .join("");
 
-    const riwayat = (d.riwayat || []).slice(0, 12);
+    const urutanNama = { minecraft: 0, backend: 1, frontend: 2 };
+    const riwayat = (d.riwayat || [])
+      .slice()
+      .sort((a, b) => {
+        const w = String(b.checked_at).localeCompare(String(a.checked_at));
+        if (w !== 0) return w;
+        return (urutanNama[a.target] ?? 9) - (urutanNama[b.target] ?? 9);
+      })
+      .slice(0, 12);
     document.getElementById("riwayat").innerHTML = riwayat.length
       ? riwayat
           .map(
