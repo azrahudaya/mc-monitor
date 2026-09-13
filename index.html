@@ -52,8 +52,14 @@
   .state.bad { color: var(--bad); }
   .state.unknown { color: var(--muted); }
   .lat { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
-  .detail { font-size: 13px; color: var(--text); background: #f9fafb; border-left: 2px solid var(--border); border-radius: 4px; padding: 8px 10px; overflow-wrap: anywhere; cursor: default; }
-  .uptime { font-size: 12.5px; color: var(--muted); margin-top: auto; padding-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .detail {
+    display: inline-block; align-self: flex-start; max-width: 100%;
+    font-size: 13px; color: var(--text); background: #f2f4f7; border: none; border-radius: 6px;
+    padding: 7px 10px; overflow-wrap: anywhere; cursor: default;
+    font-variant-numeric: tabular-nums;
+  }
+  .uptime { font-size: 12.5px; color: var(--muted); margin-top: auto; padding-top: 8px; }
+  .uptime .host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
   col.waktu { width: 30%; }
@@ -168,7 +174,10 @@ function kartu(nama, data, uptime) {
         <span class="lat">${lat}</span>
       </div>
       <div class="detail">${detail.replace(/</g, "&lt;")}</div>
-      <div class="uptime">${TARGET[nama] || ""} &middot; ${up}</div>
+      <div class="uptime">
+        <div class="host">${TARGET[nama] || ""}</div>
+        <div>${up}</div>
+      </div>
     </div>`;
 }
 
