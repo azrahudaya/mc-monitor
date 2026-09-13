@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Monitor Server</title>
+<meta name="description" content="Status server Minecraft, API, dan website secara langsung." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111827'/%3E%3Cpath d='M8 21l5-6 4 3 7-9' stroke='%2322c55e' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #e4e7ec;
+    --text: #10151c;
+    --muted: #667085;
+    --ok: #15803d;
+    --ok-bg: #ecfdf3;
+    --bad: #b42318;
+    --bad-bg: #fef3f2;
+    --wait: #b54708;
+    --wait-bg: #fffaeb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    background: var(--wait-bg); color: var(--wait); border: 1px solid var(--border);
+  }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0; font-weight: 600; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .state { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; }
+  .state.ok { color: var(--ok); }
+  .state.bad { color: var(--bad); }
+  .state.unknown { color: var(--muted); }
+  .lat { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+  .detail { font-size: 13px; color: var(--text); background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; word-break: break-word; }
+  .uptime { font-size: 13px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); }
+  section { margin-top: 28px; }
+  section > h2 { font-size: 14px; margin: 0 0 10px; }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 14px; }
+  a { color: #1d4ed8; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .err { color: var(--bad); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Monitor Server</h1>
+      <div class="sub">Minecraft &middot; API &middot; Website &mdash; diperiksa otomatis tiap 10 menit</div>
+    </div>
+    <div id="badge" class="badge"><span class="dot"></span><span id="badgeText">memuat</span></div>
+  </header>
+
+  <div class="grid" id="cards"></div>
+
+  <section>
+    <h2>Pemeriksaan terakhir</h2>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr><th>Waktu</th><th>Layanan</th><th>Hasil</th><th>Respons</th></tr>
+        </thead>
+        <tbody id="riwayat">
+          <tr><td colspan="4" class="sub">memuat data</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span id="diperiksa">-</span>
+    <span>Diperbarui otomatis tiap 60 detik</span>
+    <a href="https://fundraise.id" target="_blank" rel="noreferrer">fundraise.id</a>
+  </footer>
+</div>
+
+<script>
+const API = "https://fundraise-api-8597292499bf.herokuapp.com/api/v1/monitor/public";
+const KEY = "4x8f9kL2mN5pQ7rT9vW1yZ3aB5cD7eF8gH0jK2lM4nO6pQ8rS0tU2vW4xY6zA";
+const NAMA = {
+  minecraft: "Server Minecraft",
+  backend: "API Backend",
+  frontend: "Website",
+  api: "API Backend",
+};
+const TARGET = {
+  minecraft: "jiwalaknat.azrahudaya.me",
+  backend: "Heroku",
+  frontend: "fundraise.id",
+  api: "Heroku",
+};
+
+const fmt = (iso) => {
+  const d = new Date(iso);
+  if (isNaN(d)) return "-";
+  return d.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+};
+
+function kartu(nama, data, uptime) {
+  const ok = data ? data.ok : null;
+  const kelas = ok === true ? "ok" : ok === false ? "bad" : "unknown";
+  const teks = ok === true ? "Normal" : ok === false ? "Bermasalah" : "Belum ada data";
+  const lat = data && data.latency_ms != null ? data.latency_ms + " ms" : "-";
+  const detail = data && data.detail ? data.detail : "menunggu pemeriksaan";
+  const up = uptime != null ? uptime + "% dalam 24 jam" : "data 24 jam belum cukup";
+  return `
+    <div class="card">
+      <h2>${NAMA[nama] || nama}</h2>
+      <div class="row">
+        <span class="state ${kelas}"><span class="dot"></span>${teks}</span>
+        <span class="lat">${lat}</span>
+      </div>
+      <div class="detail">${detail.replace(/</g, "&lt;")}</div>
+      <div class="uptime">${TARGET[nama] || ""} &middot; ${up}</div>
+    </div>`;
+}
+
+async function muat() {
+  const badge = document.getElementById("badge");
+  const badgeText = document.getElementById("badgeText");
+  try {
+    const r = await fetch(API, { headers: { "x-api-key": KEY }, cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    const d = j.data || {};
+    const status = d.status || "belum ada data";
+    const normal = status === "normal";
+    badge.className = "badge " + (normal ? "ok" : status === "bermasalah" ? "bad" : "");
+    badgeText.textContent = normal ? "Semua normal" : status;
+
+    const urutan = ["minecraft", "backend", "frontend"];
+    document.getElementById("cards").innerHTML = urutan
+      .map((t) => kartu(t, (d.ringkas || {})[t], (d.uptime_24_jam || {})[t]))
+      .join("");
+
+    const riwayat = (d.riwayat || []).slice(0, 12);
+    document.getElementById("riwayat").innerHTML = riwayat.length
+      ? riwayat
+          .map(
+            (r) => `<tr>
+              <td class="num">${fmt(r.checked_at)}</td>
+              <td>${NAMA[r.target] || r.target}</td>
+              <td><span class="pill ${r.ok ? "ok" : "bad"}">${r.ok ? "OK" : "GAGAL"}</span></td>
+              <td class="num">${r.latency_ms != null ? r.latency_ms + " ms" : "-"}</td>
+            </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="4" class="sub">belum ada riwayat</td></tr>`;
+
+    document.getElementById("diperiksa").textContent = "Data per " + fmt(d.diperiksa_pada);
+  } catch (e) {
+    badge.className = "badge bad";
+    badgeText.textContent = "gagal ambil data";
+    document.getElementById("cards").innerHTML =
+      `<div class="card"><h2>Koneksi</h2><div class="err">Tidak bisa mengambil status dari API: ${e.message}</div></div>`;
+  }
+}
+
+muat();
+setInterval(muat, 60000);
+</script>
+</body>
+</html>
