@@ -103,8 +103,8 @@
     <div class="baris-atas">
       <div>
         <h1>Status server</h1>
-        <div class="identitas">jiwalaknat.azrahudaya.me &middot; fundraise.id</div>
-        <div class="keterangan">Server Minecraft, API, dan situs. Diperiksa otomatis tiap 10 menit oleh pemantau di Heroku.</div>
+        <div class="identitas">jiwalaknat.azrahudaya.me</div>
+        <div class="keterangan">Server Minecraft dan API yang dipakai untuk melayaninya. Diperiksa otomatis tiap 10 menit oleh pemantau di Heroku.</div>
       </div>
       <div class="keadaan" id="keadaan"><span class="titik"></span><span id="keadaanTeks">memuat</span></div>
     </div>
@@ -134,7 +134,6 @@ const KEY = "4x8f9kL2mN5pQ7rT9vW1yZ3aB5cD7eF8gH0jK2lM4nO6pQ8rS0tU2vW4xY6zA";
 const LAYANAN = [
   { kunci: "minecraft", nama: "Server Minecraft", alamat: "jiwalaknat.azrahudaya.me" },
   { kunci: "backend", nama: "API backend", alamat: "fundraise-api.herokuapp.com" },
-  { kunci: "frontend", nama: "Situs FundRaise", alamat: "fundraise.id" },
 ];
 
 const jam = (iso, denganTahun) => {
@@ -180,7 +179,7 @@ function tampilkanGalat(pesan) {
   document.getElementById("isi").innerHTML = `
     <div class="galat">
       <b>Data status tidak bisa diambil.</b>
-      <p>${pesan} Pemantau ada di Heroku, jadi ini bisa berarti Heroku sedang tumbang atau koneksi kamu yang terganggu, bukan berarti ketiga layanan mati.</p>
+      <p>${pesan} Pemantau ada di Heroku, jadi ini bisa berarti Heroku sedang tumbang atau koneksi kamu yang terganggu, bukan berarti kedua layanan mati.</p>
       <p>Periksa langsung: <code>${API}</code></p>
       <button type="button" id="cobaLagi">Coba ambil data lagi</button>
     </div>`;
