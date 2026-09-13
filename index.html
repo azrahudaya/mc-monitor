@@ -3,233 +3,222 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Monitor Server</title>
-<meta name="description" content="Status server Minecraft, API, dan website secara langsung." />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111827'/%3E%3Cpath d='M8 21l5-6 4 3 7-9' stroke='%2322c55e' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<title>Status server</title>
+<meta name="description" content="Status server Minecraft, API, dan situs, diperiksa otomatis." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%2310151c'/%3E%3Cpath d='M8 21l5-6 4 3 7-9' stroke='%2359d17d' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 <style>
+  /* Palet: kertas netral + tinta gelap, dan warna saturasi hanya untuk keadaan
+     (hijau normal, kuning tertunda, merah gagal). Alasan: pertanyaan halaman ini
+     cuma satu, "ada yang rusak?", jadi warna harus jadi jawabannya, bukan hiasan. */
   :root {
-    --bg: #f6f7f9;
-    --card: #ffffff;
-    --border: #e4e7ec;
-    --text: #10151c;
-    --muted: #667085;
-    --ok: #15803d;
-    --ok-bg: #ecfdf3;
-    --bad: #b42318;
-    --bad-bg: #fef3f2;
-    --wait: #b54708;
-    --wait-bg: #fffaeb;
+    --kertas: #f4f5f7;
+    --kartu: #ffffff;
+    --garis: #dcdfe4;
+    --garis-tegas: #b9bec7;
+    --tinta: #12161c;
+    --tinta-muda: #5b636e;
+    --ok: #146c2e;
+    --ok-muda: #eef7f0;
+    --tunda: #8a5000;
+    --tunda-muda: #fdf6e8;
+    --gagal: #a32318;
+    --gagal-muda: #fdf1ef;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
+    margin: 0; background: var(--kertas); color: var(--tinta);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
-  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); font-size: 13px; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
-    background: var(--wait-bg); color: var(--wait); border: 1px solid var(--border);
+  .halaman { max-width: 760px; margin: 0 auto; padding: 36px 20px 72px; }
+
+  /* Kepala: satu aturan tebal jadi motif identitas yang diulang di tiap baris. */
+  header { border-bottom: 2px solid var(--tinta); padding-bottom: 14px; margin-bottom: 22px; }
+  .baris-atas { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 19px; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .keterangan { color: var(--tinta-muda); font-size: 13.5px; max-width: 46ch; }
+  .keadaan { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; padding: 5px 12px; border: 1px solid var(--garis-tegas); border-radius: 3px; background: var(--kartu); }
+  .keadaan .titik { width: 9px; height: 9px; border-radius: 50%; background: var(--tinta-muda); }
+  .keadaan[data-keadaan="normal"] .titik { background: var(--ok); }
+  .keadaan[data-keadaan="gangguan"] .titik { background: var(--gagal); }
+  .keadaan[data-keadaan="sebagian"] .titik { background: var(--tunda); }
+
+  /* Daftar layanan: baris, bukan kartu. Alasan: isinya deretan nilai mesin yang
+     dibandingkan baris demi baris, jadi garis kiri membawa keadaan tiap layanan. */
+  .daftar { border-top: 1px solid var(--garis); }
+  .layanan { display: grid; grid-template-columns: 4px 1fr auto; gap: 0 16px; align-items: start; padding: 15px 0; border-bottom: 1px solid var(--garis); }
+  .tanda { width: 4px; align-self: stretch; border-radius: 1px; background: var(--garis-tegas); }
+  .layanan[data-keadaan="normal"] .tanda { background: var(--ok); }
+  .layanan[data-keadaan="gangguan"] .tanda { background: var(--gagal); }
+  .layanan[data-keadaan="belum"] .tanda { background: var(--tunda); }
+  .nama { font-weight: 600; font-size: 15px; }
+  .alamat { font-family: var(--mono); font-size: 12.5px; color: var(--tinta-muda); margin-top: 2px; }
+  .nilai { font-family: var(--mono); font-size: 12.5px; margin-top: 7px; background: var(--kertas); border: 1px solid var(--garis); border-radius: 3px; padding: 5px 8px; display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+  .kanan { text-align: right; font-family: var(--mono); font-size: 12.5px; color: var(--tinta-muda); white-space: nowrap; }
+  .kanan b { display: block; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+  .kanan .menyala-ok b { color: var(--ok); }
+  .kanan .menyala-gagal b { color: var(--gagal); }
+  .kanan .menyala-belum b { color: var(--tunda); }
+
+  h2 { font-size: 15px; font-weight: 650; margin: 30px 0 10px; }
+  .catatan { font-size: 13.5px; color: var(--tinta-muda); margin: -4px 0 12px; max-width: 60ch; }
+  .kosong { border: 1px solid var(--garis); border-radius: 3px; background: var(--kartu); padding: 18px; font-size: 14px; color: var(--tinta-muda); }
+  .kosong b { color: var(--tinta); display: block; margin-bottom: 4px; font-weight: 600; }
+
+  .gangguan { border: 1px solid var(--garis); border-radius: 3px; background: var(--kartu); }
+  .gangguan .baris { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; padding: 12px 14px; border-bottom: 1px solid var(--garis); }
+  .gangguan .baris:last-child { border-bottom: 0; }
+  .gangguan .baris .pesan { font-size: 14px; }
+  .gangguan .baris .waktu { font-family: var(--mono); font-size: 12.5px; color: var(--tinta-muda); text-align: right; white-space: nowrap; }
+
+  .galat { border: 1px solid var(--gagal); border-left-width: 4px; border-radius: 3px; background: var(--gagal-muda); padding: 14px 16px; }
+  .galat b { display: block; margin-bottom: 5px; }
+  .galat p { margin: 0 0 10px; font-size: 13.5px; }
+  .galat code { font-family: var(--mono); font-size: 12.5px; }
+
+  .memuat { font-size: 13.5px; color: var(--tinta-muda); }
+  footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--garis); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12.5px; color: var(--tinta-muda); }
+  footer .kanan-bawah { margin-left: auto; }
+  a { color: var(--tinta); text-underline-offset: 2px; }
+  button { font: inherit; font-size: 13.5px; padding: 8px 14px; border: 1px solid var(--garis-tegas); border-radius: 3px; background: var(--kartu); color: var(--tinta); cursor: pointer; min-height: 40px; }
+  button:hover { border-color: var(--tinta); }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
+
+  @media (max-width: 520px) {
+    .halaman { padding: 24px 16px 56px; }
+    .layanan { grid-template-columns: 4px 1fr; }
+    .kanan { grid-column: 2; text-align: left; margin-top: 10px; }
+    .kanan b { display: inline; margin-right: 6px; }
   }
-  .badge.ok { background: var(--ok-bg); color: var(--ok); }
-  .badge.bad { background: var(--bad-bg); color: var(--bad); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 168px;
-  }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0; font-weight: 600; }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .state { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; }
-  .state.ok { color: var(--ok); }
-  .state.bad { color: var(--bad); }
-  .state.unknown { color: var(--muted); }
-  .lat { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
-  .detail {
-    display: inline-block; align-self: flex-start; max-width: 100%;
-    font-size: 13px; color: var(--text); background: #f2f4f7; border: none; border-radius: 6px;
-    padding: 7px 10px; overflow-wrap: anywhere; cursor: default;
-    font-variant-numeric: tabular-nums;
-  }
-  .uptime { font-size: 12.5px; color: var(--muted); margin-top: auto; padding-top: 8px; }
-  .uptime .host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  col.waktu { width: 30%; }
-  col.layanan { width: 34%; }
-  col.hasil { width: 16%; }
-  col.respons { width: 20%; }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-  td.num { font-variant-numeric: tabular-nums; }
-  .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
-  .pill.ok { background: var(--ok-bg); color: var(--ok); }
-  .pill.bad { background: var(--bad-bg); color: var(--bad); }
-  section { margin-top: 28px; }
-  section > h2 { font-size: 14px; margin: 0 0 10px; }
-  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  footer { margin-top: 32px; color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
-  footer .kanan { margin-left: auto; }
-  a { color: #1d4ed8; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .err { color: var(--bad); font-size: 13px; }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="halaman">
   <header>
-    <div>
-      <h1>Monitor Server</h1>
-      <div class="sub">Minecraft, API, dan website &mdash; diperiksa dari server tiap 10 menit</div>
+    <div class="baris-atas">
+      <div>
+        <h1>Status server</h1>
+        <div class="keterangan">Server Minecraft, API, dan situs. Diperiksa otomatis tiap 10 menit oleh pemantau di Heroku.</div>
+      </div>
+      <div class="keadaan" id="keadaan"><span class="titik"></span><span id="keadaanTeks">memuat</span></div>
     </div>
-    <div id="badge" class="badge"><span class="dot"></span><span id="badgeText">memuat</span></div>
   </header>
 
-  <div class="grid" id="cards"></div>
+  <main id="isi" aria-live="polite">
+    <div class="daftar" id="daftar"></div>
+    <p class="memuat" id="memuat">Mengambil data dari API pemantau.</p>
+  </main>
 
-  <section>
-    <h2>Pemeriksaan terakhir</h2>
-    <div class="panel">
-      <table>
-        <colgroup>
-          <col class="waktu" /><col class="layanan" /><col class="hasil" /><col class="respons" />
-        </colgroup>
-        <thead>
-          <tr><th>Waktu</th><th>Layanan</th><th>Hasil</th><th>Respons</th></tr>
-        </thead>
-        <tbody id="riwayat">
-          <tr><td colspan="4" class="sub">memuat data</td></tr>
-        </tbody>
-      </table>
-    </div>
+  <section id="bagianRiwayat" hidden>
+    <h2>Gangguan 24 jam terakhir</h2>
+    <p class="catatan">Hanya pemeriksaan yang gagal yang ditampilkan. Pemeriksaan normal tidak dicatat di sini.</p>
+    <div id="riwayat"></div>
   </section>
 
   <footer>
-    <span id="diperiksa">-</span>
-    <span>Halaman ini memuat ulang data tiap 60 detik</span>
-    <a class="kanan" href="https://fundraise.id" target="_blank" rel="noreferrer">fundraise.id</a>
+    <span id="capWaktu">-</span>
+    <span>Angka uptime dihitung dari pemeriksaan tersimpan dalam 24 jam terakhir.</span>
+    <span class="kanan-bawah"><button id="tombolMuat" type="button">Muat ulang sekarang</button></span>
   </footer>
 </div>
 
 <script>
 const API = "https://fundraise-api-8597292499bf.herokuapp.com/api/v1/monitor/public";
 const KEY = "4x8f9kL2mN5pQ7rT9vW1yZ3aB5cD7eF8gH0jK2lM4nO6pQ8rS0tU2vW4xY6zA";
-const NAMA = {
-  minecraft: "Server Minecraft",
-  backend: "API Backend",
-  frontend: "Website",
-  api: "API Backend",
-};
-const TARGET = {
-  minecraft: "jiwalaknat.azrahudaya.me",
-  backend: "Heroku",
-  frontend: "fundraise.id",
-  api: "Heroku",
-};
+const LAYANAN = [
+  { kunci: "minecraft", nama: "Server Minecraft", alamat: "jiwalaknat.azrahudaya.me" },
+  { kunci: "backend", nama: "API backend", alamat: "fundraise-api.herokuapp.com" },
+  { kunci: "frontend", nama: "Situs FundRaise", alamat: "fundraise.id" },
+];
 
-const ringkasDetail = (target, teks) => {
-  const s = (teks || "").trim();
-  if (!s) return "menunggu pemeriksaan";
-  if (target === "minecraft") {
-    // contoh asli: "26.2 | jiwa laknat | pemain 0/5"
-    const bagian = s.split("|").map((x) => x.trim());
-    const versi = bagian[0] || "";
-    const motd = bagian[1] || "";
-    const pemain = (bagian[2] || "").replace(/^pemain\s*/i, "");
-    return ["v" + versi, motd, pemain ? pemain + " pemain" : ""].filter(Boolean).join(" · ");
-  }
-  const http = s.match(/HTTP\s+(\d{3})/i);
-  if (http) {
-    const kode = http[1];
-    const tambahan = /pong/i.test(s) ? "pong" : kode.startsWith("2") ? "OK" : "gagal";
-    return "HTTP " + kode + " · " + tambahan;
-  }
-  return s.slice(0, 90);
-};
-
-const fmt = (iso) => {
+const jam = (iso) => {
   const d = new Date(iso);
   if (isNaN(d)) return "-";
-  return d.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return d.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 };
 
-function kartu(nama, data, uptime) {
-  const ok = data ? data.ok : null;
-  const kelas = ok === true ? "ok" : ok === false ? "bad" : "unknown";
-  const teks = ok === true ? "Normal" : ok === false ? "Bermasalah" : "Belum ada data";
-  const lat = data && data.latency_ms != null ? data.latency_ms + " ms" : "-";
-  const detail = ringkasDetail(nama, data ? data.detail : "");
-  const up = uptime != null ? "uptime 24 jam " + uptime + "%" : "uptime 24 jam belum cukup data";
+// Nilai mesin dipendekkan jadi yang benar-benar dipakai saat memutuskan.
+const ringkas = (kunci, teks) => {
+  const s = (teks || "").trim();
+  if (!s) return "menunggu pemeriksaan";
+  if (kunci === "minecraft") {
+    const b = s.split("|").map((x) => x.trim());
+    return [b[0] ? "v" + b[0] : "", b[1] || "", (b[2] || "").replace(/^pemain\s*/i, "") + " pemain"].filter(Boolean).join(" · ");
+  }
+  const h = s.match(/HTTP\s+(\d{3})/i);
+  if (h) return "HTTP " + h[1] + " · " + (/pong/i.test(s) ? "pong" : h[1].startsWith("2") ? "OK" : "gagal");
+  return s.slice(0, 80);
+};
+
+function gambar(layanan, data, uptime) {
+  const keadaan = !data ? "belum" : data.ok ? "normal" : "gangguan";
+  const label = keadaan === "normal" ? "Normal" : keadaan === "gangguan" ? "Gagal" : "Belum ada data";
+  const kelasLabel = keadaan === "normal" ? "menyala-ok" : keadaan === "gangguan" ? "menyala-gagal" : "menyala-belum";
+  const up = uptime != null ? "uptime " + uptime + "%" : "uptime belum cukup data";
+  const ms = data && data.latency_ms != null ? data.latency_ms + " ms" : "tanpa respons";
   return `
-    <div class="card">
-      <h2>${NAMA[nama] || nama}</h2>
-      <div class="row">
-        <span class="state ${kelas}"><span class="dot"></span>${teks}</span>
-        <span class="lat">${lat}</span>
+    <div class="layanan" data-keadaan="${keadaan}">
+      <span class="tanda" aria-hidden="true"></span>
+      <div>
+        <div class="nama">${layanan.nama}</div>
+        <div class="alamat">${layanan.alamat}</div>
+        <div class="nilai">${ringkas(layanan.kunci, data ? data.detail : "")}</div>
       </div>
-      <div class="detail">${detail.replace(/</g, "&lt;")}</div>
-      <div class="uptime">
-        <div class="host">${TARGET[nama] || ""}</div>
-        <div>${up}</div>
-      </div>
+      <div class="kanan ${kelasLabel}"><b>${label}</b>${ms}<br>${up}</div>
     </div>`;
 }
 
+function tampilkanGalat(pesan) {
+  document.getElementById("isi").innerHTML = `
+    <div class="galat">
+      <b>Data status tidak bisa diambil.</b>
+      <p>${pesan} Pemantau ada di Heroku, jadi ini bisa berarti Heroku sedang tumbang atau koneksi kamu yang terganggu, bukan berarti ketiga layanan mati.</p>
+      <p>Periksa langsung: <code>${API}</code></p>
+      <button type="button" id="cobaLagi">Coba ambil data lagi</button>
+    </div>`;
+  document.getElementById("cobaLagi").addEventListener("click", muat);
+  document.getElementById("keadaan").dataset.keadaan = "sebagian";
+  document.getElementById("keadaanTeks").textContent = "tidak diketahui";
+}
+
 async function muat() {
-  const badge = document.getElementById("badge");
-  const badgeText = document.getElementById("badgeText");
+  document.getElementById("memuat").textContent = "Mengambil data dari API pemantau.";
   try {
     const r = await fetch(API, { headers: { "x-api-key": KEY }, cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const j = await r.json();
-    const d = j.data || {};
-    const status = d.status || "belum ada data";
-    const normal = status === "normal";
-    badge.className = "badge " + (normal ? "ok" : status === "bermasalah" ? "bad" : "");
-    badgeText.textContent = normal ? "Semua normal" : status;
+    if (!r.ok) throw new Error("API membalas HTTP " + r.status + ".");
+    const d = (await r.json()).data || {};
+    const ringkasLayanan = d.ringkas || {};
+    const uptime = d.uptime_24_jam || {};
 
-    const urutan = ["minecraft", "backend", "frontend"];
-    document.getElementById("cards").innerHTML = urutan
-      .map((t) => kartu(t, (d.ringkas || {})[t], (d.uptime_24_jam || {})[t]))
-      .join("");
+    document.getElementById("daftar").innerHTML = LAYANAN
+      .map((l) => gambar(l, ringkasLayanan[l.kunci], uptime[l.kunci])).join("");
 
-    const urutanNama = { minecraft: 0, backend: 1, frontend: 2 };
-    const riwayat = (d.riwayat || [])
-      .slice()
-      .sort((a, b) => {
-        const w = String(b.checked_at).localeCompare(String(a.checked_at));
-        if (w !== 0) return w;
-        return (urutanNama[a.target] ?? 9) - (urutanNama[b.target] ?? 9);
-      })
-      .slice(0, 12);
-    document.getElementById("riwayat").innerHTML = riwayat.length
-      ? riwayat
-          .map(
-            (r) => `<tr>
-              <td class="num">${fmt(r.checked_at)}</td>
-              <td>${NAMA[r.target] || r.target}</td>
-              <td><span class="pill ${r.ok ? "ok" : "bad"}">${r.ok ? "OK" : "GAGAL"}</span></td>
-              <td class="num">${r.latency_ms != null ? r.latency_ms + " ms" : "-"}</td>
-            </tr>`
-          )
-          .join("")
-      : `<tr><td colspan="4" class="sub">belum ada riwayat</td></tr>`;
+    const normal = d.status === "normal";
+    const keadaan = document.getElementById("keadaan");
+    keadaan.dataset.keadaan = normal ? "normal" : "gangguan";
+    document.getElementById("keadaanTeks").textContent = normal ? "Semua normal" : (d.status || "tidak diketahui");
 
-    document.getElementById("diperiksa").textContent = "Data per " + fmt(d.diperiksa_pada);
+    const gagal = (d.riwayat || []).filter((x) => !x.ok);
+    const bagian = document.getElementById("bagianRiwayat");
+    bagian.hidden = false;
+    document.getElementById("riwayat").innerHTML = gagal.length
+      ? '<div class="gangguan">' + gagal.slice(0, 10).map((x) => {
+          const l = LAYANAN.find((y) => y.kunci === x.target);
+          return `<div class="baris"><div class="pesan">${l ? l.nama : x.target} gagal diperiksa</div><div class="waktu">${jam(x.checked_at)}</div></div>`;
+        }).join("") + "</div>"
+      : '<div class="kosong"><b>Tidak ada gangguan tercatat dalam 24 jam terakhir.</b>Semua pemeriksaan yang tersimpan berhasil.</div>';
+
+    document.getElementById("capWaktu").textContent = "Data per " + jam(d.diperiksa_pada);
+    document.getElementById("memuat").textContent = "";
   } catch (e) {
-    badge.className = "badge bad";
-    badgeText.textContent = "gagal ambil data";
-    document.getElementById("cards").innerHTML =
-      `<div class="card"><h2>Koneksi</h2><div class="err">Tidak bisa mengambil status dari API: ${e.message}</div></div>`;
+    tampilkanGalat(e.message === "Failed to fetch" ? "Permintaan ke API diblokir (CORS atau koneksi)." : e.message + ".");
   }
 }
 
+document.getElementById("tombolMuat").addEventListener("click", muat);
+document.getElementById("daftar").innerHTML = LAYANAN
+  .map((l) => gambar(l, null, null)).join("");
 muat();
 setInterval(muat, 60000);
 </script>
