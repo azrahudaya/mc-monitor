@@ -34,11 +34,15 @@
   .halaman { max-width: 760px; margin: 0 auto; padding: 36px 20px 72px; }
 
   /* Kepala: satu aturan tebal jadi motif identitas yang diulang di tiap baris. */
-  header { border-bottom: 2px solid var(--tinta); padding-bottom: 14px; margin-bottom: 22px; }
+  header { border-bottom: 1px solid var(--garis-tegas); padding-bottom: 16px; margin-bottom: 24px; }
   .baris-atas { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   h1 { font-size: 19px; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .identitas { font-family: var(--mono); font-size: 12.5px; color: var(--tinta-muda); margin-bottom: 6px; }
   .keterangan { color: var(--tinta-muda); font-size: 13.5px; max-width: 46ch; }
-  .keadaan { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; padding: 5px 12px; border: 1px solid var(--garis-tegas); border-radius: 3px; background: var(--kartu); }
+  .keadaan { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; padding: 6px 12px; border: 0; border-radius: 3px; background: var(--kertas); }
+  .keadaan[data-keadaan="normal"] { background: var(--ok-muda); color: var(--ok); }
+  .keadaan[data-keadaan="gangguan"] { background: var(--gagal-muda); color: var(--gagal); }
+  .keadaan[data-keadaan="sebagian"] { background: var(--tunda-muda); color: var(--tunda); }
   .keadaan .titik { width: 9px; height: 9px; border-radius: 50%; background: var(--tinta-muda); }
   .keadaan[data-keadaan="normal"] .titik { background: var(--ok); }
   .keadaan[data-keadaan="gangguan"] .titik { background: var(--gagal); }
@@ -47,7 +51,7 @@
   /* Daftar layanan: baris, bukan kartu. Alasan: isinya deretan nilai mesin yang
      dibandingkan baris demi baris, jadi garis kiri membawa keadaan tiap layanan. */
   .daftar { border-top: 1px solid var(--garis); }
-  .layanan { display: grid; grid-template-columns: 4px 1fr auto; gap: 0 16px; align-items: start; padding: 15px 0; border-bottom: 1px solid var(--garis); }
+  .layanan { display: grid; grid-template-columns: 4px 1fr auto; gap: 0 16px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--garis); }
   .tanda { width: 4px; align-self: stretch; border-radius: 1px; background: var(--garis-tegas); }
   .layanan[data-keadaan="normal"] .tanda { background: var(--ok); }
   .layanan[data-keadaan="gangguan"] .tanda { background: var(--gagal); }
@@ -61,9 +65,9 @@
   .kanan .menyala-gagal b { color: var(--gagal); }
   .kanan .menyala-belum b { color: var(--tunda); }
 
-  h2 { font-size: 15px; font-weight: 650; margin: 30px 0 10px; }
+  h2 { font-size: 15px; font-weight: 650; margin: 32px 0 8px; }
   .catatan { font-size: 13.5px; color: var(--tinta-muda); margin: -4px 0 12px; max-width: 60ch; }
-  .kosong { border: 1px solid var(--garis); border-radius: 3px; background: var(--kartu); padding: 18px; font-size: 14px; color: var(--tinta-muda); }
+  .kosong { border: 1px solid var(--garis); border-radius: 3px; background: var(--kartu); padding: 16px; font-size: 14px; color: var(--tinta-muda); }
   .kosong b { color: var(--tinta); display: block; margin-bottom: 4px; font-weight: 600; }
 
   .gangguan { border: 1px solid var(--garis); border-radius: 3px; background: var(--kartu); }
@@ -78,7 +82,7 @@
   .galat code { font-family: var(--mono); font-size: 12.5px; }
 
   .memuat { font-size: 13.5px; color: var(--tinta-muda); }
-  footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--garis); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12.5px; color: var(--tinta-muda); }
+  footer { margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--garis); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12.5px; color: var(--tinta-muda); }
   footer .kanan-bawah { margin-left: auto; }
   a { color: var(--tinta); text-underline-offset: 2px; }
   button { font: inherit; font-size: 13.5px; padding: 8px 14px; border: 1px solid var(--garis-tegas); border-radius: 3px; background: var(--kartu); color: var(--tinta); cursor: pointer; min-height: 40px; }
@@ -99,6 +103,7 @@
     <div class="baris-atas">
       <div>
         <h1>Status server</h1>
+        <div class="identitas">jiwalaknat.azrahudaya.me &middot; fundraise.id</div>
         <div class="keterangan">Server Minecraft, API, dan situs. Diperiksa otomatis tiap 10 menit oleh pemantau di Heroku.</div>
       </div>
       <div class="keadaan" id="keadaan"><span class="titik"></span><span id="keadaanTeks">memuat</span></div>
@@ -132,10 +137,12 @@ const LAYANAN = [
   { kunci: "frontend", nama: "Situs FundRaise", alamat: "fundraise.id" },
 ];
 
-const jam = (iso) => {
+const jam = (iso, denganTahun) => {
   const d = new Date(iso);
   if (isNaN(d)) return "-";
-  return d.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const opsi = { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta", hour12: false };
+  if (denganTahun) opsi.year = "numeric";
+  return d.toLocaleString("id-ID", opsi) + " WIB";
 };
 
 // Nilai mesin dipendekkan jadi yang benar-benar dipakai saat memutuskan.
@@ -209,7 +216,7 @@ async function muat() {
         }).join("") + "</div>"
       : '<div class="kosong"><b>Tidak ada gangguan tercatat dalam 24 jam terakhir.</b>Semua pemeriksaan yang tersimpan berhasil.</div>';
 
-    document.getElementById("capWaktu").textContent = "Data per " + jam(d.diperiksa_pada);
+    document.getElementById("capWaktu").textContent = "Data per " + jam(d.diperiksa_pada, true);
     document.getElementById("memuat").textContent = "";
   } catch (e) {
     tampilkanGalat(e.message === "Failed to fetch" ? "Permintaan ke API diblokir (CORS atau koneksi)." : e.message + ".");
