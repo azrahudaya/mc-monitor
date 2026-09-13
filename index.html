@@ -52,8 +52,8 @@
   .state.bad { color: var(--bad); }
   .state.unknown { color: var(--muted); }
   .lat { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
-  .detail { font-size: 13px; color: var(--text); background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; }
-  .uptime { font-size: 13px; color: var(--muted); margin-top: auto; padding-top: 4px; }
+  .detail { font-size: 13px; color: var(--text); background: #f9fafb; border-left: 2px solid var(--border); border-radius: 4px; padding: 8px 10px; overflow-wrap: anywhere; cursor: default; }
+  .uptime { font-size: 12.5px; color: var(--muted); margin-top: auto; padding-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
   col.waktu { width: 30%; }
@@ -80,7 +80,7 @@
   <header>
     <div>
       <h1>Monitor Server</h1>
-      <div class="sub">Minecraft, API, dan website &mdash; diperiksa otomatis tiap 10 menit</div>
+      <div class="sub">Minecraft, API, dan website &mdash; diperiksa dari server tiap 10 menit</div>
     </div>
     <div id="badge" class="badge"><span class="dot"></span><span id="badgeText">memuat</span></div>
   </header>
@@ -106,7 +106,7 @@
 
   <footer>
     <span id="diperiksa">-</span>
-    <span>Halaman ini memperbarui data tiap 60 detik</span>
+    <span>Halaman ini memuat ulang data tiap 60 detik</span>
     <a class="kanan" href="https://fundraise.id" target="_blank" rel="noreferrer">fundraise.id</a>
   </footer>
 </div>
@@ -129,14 +129,22 @@ const TARGET = {
 
 const ringkasDetail = (target, teks) => {
   const s = (teks || "").trim();
-  if (target === "minecraft") return s || "menunggu pemeriksaan";
+  if (!s) return "menunggu pemeriksaan";
+  if (target === "minecraft") {
+    // contoh asli: "26.2 | jiwa laknat | pemain 0/5"
+    const bagian = s.split("|").map((x) => x.trim());
+    const versi = bagian[0] || "";
+    const motd = bagian[1] || "";
+    const pemain = (bagian[2] || "").replace(/^pemain\s*/i, "");
+    return ["v" + versi, motd, pemain ? pemain + " pemain" : ""].filter(Boolean).join(" · ");
+  }
   const http = s.match(/HTTP\s+(\d{3})/i);
   if (http) {
     const kode = http[1];
-    if (kode === "200" && /pong/i.test(s)) return "HTTP 200 pong";
-    return "HTTP " + kode + (kode.startsWith("2") ? " OK" : "");
+    const tambahan = /pong/i.test(s) ? "pong" : kode.startsWith("2") ? "OK" : "gagal";
+    return "HTTP " + kode + " · " + tambahan;
   }
-  return s.slice(0, 90) || "menunggu pemeriksaan";
+  return s.slice(0, 90);
 };
 
 const fmt = (iso) => {
@@ -151,7 +159,7 @@ function kartu(nama, data, uptime) {
   const teks = ok === true ? "Normal" : ok === false ? "Bermasalah" : "Belum ada data";
   const lat = data && data.latency_ms != null ? data.latency_ms + " ms" : "-";
   const detail = ringkasDetail(nama, data ? data.detail : "");
-  const up = uptime != null ? uptime + "% dalam 24 jam" : "data 24 jam belum cukup";
+  const up = uptime != null ? "uptime 24 jam " + uptime + "%" : "uptime 24 jam belum cukup data";
   return `
     <div class="card">
       <h2>${NAMA[nama] || nama}</h2>
